@@ -77,10 +77,9 @@ namespace Turret
 
         private void SetComPort()
         {
-
             if (richTextBox1.InvokeRequired)
             {
-                richTextBox1.Invoke(new Action<int>(SetComPort), null);
+                this.Invoke(new Action(() => { SetComPort(); }));
             }
             else
             {
