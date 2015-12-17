@@ -15,6 +15,7 @@ using Emgu.CV.CvEnum;
 using Emgu.CV.Util;
 using Emgu.CV.Structure;
 using System.IO.Ports;
+using System.Threading;
 
 namespace Turret
 {
@@ -34,7 +35,7 @@ namespace Turret
         private int fireRate = 1;
         private bool autoTracking = false;
         int skipCounter = 0;
-        Timer t = null;
+        //Timer t = null;
 
         public Form1()
         {
@@ -165,17 +166,17 @@ namespace Turret
             System.Threading.Thread.Sleep(100);
             controller.SendFire();
 
-
-            t = new Timer();
-            t.Interval = 500;
-            t.Tick += (s, e) => 
+            new Thread(() =>
             {
-                if (this.BackColor == Color.Red)
-                    this.BackColor = Color.LightGray;
-                else
-                    this.BackColor = Color.Red;
-            };
-            t.Start();
+                while (isAutoFiring)
+                {
+                    if (this.BackColor == Color.Red)
+                        this.BackColor = Color.LightGray;
+                    else
+                        this.BackColor = Color.Red;
+                    Thread.Sleep(500);
+                }
+            }).Start();
 
         }
 
@@ -352,6 +353,8 @@ namespace Turret
 
         }
 
+        object m_SyncRoot_AutoFireDisengage = new object();
+        DateTime m_LastAutoFire = DateTime.Now;
         bool isAutoFiring = false;
         private void PublishX(Rectangle r, int imageWidth)
         {
@@ -384,8 +387,38 @@ namespace Turret
                        "identifyyourself.wav");
                     (new SoundPlayer(path)).Play();
                     controller.SendFirePrep();
-                    System.Threading.Thread.Sleep(50);
+                    // give the flywheel time to spin up
+                    Thread.Sleep(2000);
                     controller.SendFire();
+
+                    // remember when the fire command was sent 
+                    // use this to shut off the gun if no movement has been detected after a given amount of time
+                    m_LastAutoFire = DateTime.Now;
+                    // spin-up a thread to determine when to shut off the firing mechanism
+                    if (Monitor.TryEnter(m_SyncRoot_AutoFireDisengage, 10))
+                    {
+                        try
+                        {
+                            var th = new Thread(() =>
+                            {
+                                while ((DateTime.Now - m_LastAutoFire).TotalMilliseconds < 1000)
+                                    Thread.Sleep(1000);
+
+                                if ((DateTime.Now - m_LastAutoFire).TotalMilliseconds > 1000)
+                                {
+                                    isAutoFiring = false;
+                                    controller.SendQuit();
+                                }
+                            });
+                            // set to background so it will die when the app closes
+                            th.IsBackground = true;
+                            th.Start();
+                        }
+                        finally
+                        {
+                            Monitor.Exit(m_SyncRoot_AutoFireDisengage);
+                        }
+                    }
                 }
             }
         }
@@ -492,13 +525,13 @@ namespace Turret
 
         private void Quit()
         {
-            if (t != null)
-            {
-                //this.BackColor = Color.LightGray;
-                t.Stop();
-                t.Dispose();
-                t = null;
-            }
+            //if (t != null)
+            //{
+            //    //this.BackColor = Color.LightGray;
+            //    t.Stop();
+            //    t.Dispose();
+            //    t = null;
+            //}
 
             richTextBox1.Invoke(new Action<string>(UpdateText), "Auto Fire OFF ****");
             isAutoFiring = false;
