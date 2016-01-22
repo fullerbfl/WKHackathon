@@ -37,9 +37,11 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  Serial.println("Starting Turret Control System");
   // Attach to servo and initialize each pin
   servoHorizontal.attach(10);
   pinMode(spinupPin, OUTPUT);
+  Serial.println("Platform.....success");
   pinMode(firePin, OUTPUT);
   pinMode(commsLED, OUTPUT);
   pinMode(spinupLED, OUTPUT);
@@ -48,24 +50,35 @@ void setup() {
 
   // Just some fancy stuff with the LEDs to show the board is "online"
   digitalWrite(commsLED, HIGH);
+  Serial.println("Comms.....success");
   delay(750);
   digitalWrite(spinupLED, HIGH);
+  Serial.println("Spinup.....success");
   delay(750);
   digitalWrite(fireLED, HIGH);
+  Serial.print(".");
   delay(750);
   digitalWrite(fireLED, LOW);
+  Serial.print(".");
   delay(350);
   digitalWrite(fireLED, HIGH);
+  Serial.print(".");
   delay(350);
   digitalWrite(fireLED, LOW);
+  Serial.print(".");
   delay(350);
   digitalWrite(fireLED, HIGH);
+  Serial.print(".");
   delay(350);
   digitalWrite(fireLED, LOW);
+  Serial.print(".");
   delay(1000);
 
+  Serial.println("");
   digitalWrite(spinupLED, LOW);
   digitalWrite(fireLED, LOW);
+
+  Serial.println("System Online.");
 }
 
 

@@ -166,17 +166,19 @@ namespace Turret
             System.Threading.Thread.Sleep(100);
             controller.SendFire();
 
-            new Thread(() =>
-            {
-                while (isAutoFiring)
-                {
-                    if (this.BackColor == Color.Red)
-                        this.BackColor = Color.LightGray;
-                    else
-                        this.BackColor = Color.Red;
-                    Thread.Sleep(500);
-                }
-            }).Start();
+            //var th = new Thread(() =>
+            //{
+            //    while (isAutoFiring)
+            //    {
+            //        if (this.BackColor == Color.Red)
+            //            this.BackColor = Color.LightGray;
+            //        else
+            //            this.BackColor = Color.Red;
+            //        Thread.Sleep(500);
+            //    }
+            //});
+            //th.IsBackground = true;
+            //th.Start();
 
         }
 
@@ -355,7 +357,7 @@ namespace Turret
 
         object m_SyncRoot_AutoFireDisengage = new object();
         DateTime m_LastAutoFire = DateTime.Now;
-        bool isAutoFiring = false;
+        volatile bool isAutoFiring = false;
         private void PublishX(Rectangle r, int imageWidth)
         {
             skipCounter++;
@@ -391,9 +393,6 @@ namespace Turret
                     Thread.Sleep(2000);
                     controller.SendFire();
 
-                    // remember when the fire command was sent 
-                    // use this to shut off the gun if no movement has been detected after a given amount of time
-                    m_LastAutoFire = DateTime.Now;
                     // spin-up a thread to determine when to shut off the firing mechanism
                     if (Monitor.TryEnter(m_SyncRoot_AutoFireDisengage, 10))
                     {
@@ -401,13 +400,18 @@ namespace Turret
                         {
                             var th = new Thread(() =>
                             {
-                                while ((DateTime.Now - m_LastAutoFire).TotalMilliseconds < 1000)
-                                    Thread.Sleep(1000);
+                                // remember when the fire command was sent 
+                                // use this to shut off the gun if no movement has been detected after a given amount of time
+                                m_LastAutoFire = DateTime.Now;
+                                while ((DateTime.Now - m_LastAutoFire).TotalMilliseconds < 500)
+                                    Thread.Sleep(500);
 
-                                if ((DateTime.Now - m_LastAutoFire).TotalMilliseconds > 1000)
+                                //if ((DateTime.Now - m_LastAutoFire).TotalMilliseconds > 500)
                                 {
-                                    isAutoFiring = false;
                                     controller.SendQuit();
+                                    // wait 5 secs before refiring
+                                    Thread.Sleep(5000);
+                                    isAutoFiring = false;
                                 }
                             });
                             // set to background so it will die when the app closes
@@ -543,6 +547,7 @@ namespace Turret
         {
             controller.Shutdown();
             controller = null;
+            XboxController.StopPolling();
         }
 
         private void trackBar1_Scroll(object sender, EventArgs e)

@@ -99,8 +99,8 @@ namespace Turret
 
         internal void Shutdown()
         {
-            //currentPort.Close();
-            //currentPort.Dispose();
+            currentPort.Close();
+            currentPort.Dispose();
         }
     }
 }
